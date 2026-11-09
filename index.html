@@ -361,6 +361,24 @@ dialog::backdrop{background:rgba(16,24,40,.45)}
 .tl .l3 .players{gap:4px}
 .tl .l3 .players li{font-size:12px;position:static;padding:0}
 .tl .l3 .players li::before,.tl .l3 .players li::after{display:none}
+
+.tm .pl1{display:none}
+@media (max-width:720px){
+  /* vignettes de concours : plus étroites, infos sur 3 lignes */
+  nav.tabs{grid-template-columns:repeat(4,minmax(136px,1fr));gap:8px}
+  .tab{min-height:0;padding:9px 8px 9px 44px}
+  .tab .letter{left:8px;width:28px;height:28px;font-size:16px;border-radius:8px}
+  .tab .tt{font-size:13px;line-height:1.2;white-space:nowrap}
+  .tab .ts{font-size:11.5px;line-height:1.3;margin-top:3px}
+  .tab .ts span{display:block}
+  .tab .ts .sep{display:none}
+  .tab .tb{margin-top:6px}
+  /* nom du premier joueur sous le numéro d'équipe */
+  .tm{height:auto;min-height:40px;flex-direction:column;gap:1px;padding:4px 8px}
+  .tm .num{line-height:1.1}
+  .tm .pl1{display:block;max-width:104px;font-size:10px;font-weight:650;line-height:1.15;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tm.win .pl1{color:inherit;opacity:.85}
+}
 </style>
 </head>
 <body>
@@ -557,7 +575,7 @@ function teamRow(v, m) {
   if (isTeam(v)) {
     const cls = m && m.winner === v && m.status !== "exempt" ? "win" : m && m.loser === v ? "lose" : "";
     const named = CONFIG.teamNames[v] ? " named" : "";
-    return `<button class="tm ${cls}${named}" data-team="${v}" title="${teamName(v)}"><span class="num">${v}</span><span class="name">${CONFIG.teamNames[v] || ""}</span></button>`;
+    return `<button class="tm ${cls}${named}" data-team="${v}" title="${teamName(v)}"><span class="num">${v}</span><span class="name">${CONFIG.teamNames[v] || ""}</span>${TEAMS[v] && TEAMS[v][0] ? `<span class="pl1">${esc(TEAMS[v][0].name)}</span>` : ""}</button>`;
   }
   const label = isRef(v) ? `V.P${v - 2000}` : "?";
   return `<span class="tm ph" title="${isRef(v) ? `Vainqueur partie ${v - 2000}` : "En attente"}"><span class="num">${label}</span></span>`;
@@ -590,12 +608,12 @@ function renderTabs() {
     const pct = ms.length ? Math.round(fini / ms.length * 100) : 0;
     return `<button class="tab" role="tab" data-tab="${c.id}" aria-selected="${state.tab === c.id}" style="--c:var(--${c.color});--cs:var(--${c.color}-soft)">
       <span class="letter">${c.id}</span><div class="tt">${c.label}</div>
-      <div class="ts">${n} équipes · ${live ? `${live} en cours` : `${pct} % joué`}</div><div class="tb"><i style="width:${pct}%"></i></div></button>`;
+      <div class="ts"><span>${n} équipes</span><span class="sep"> · </span><span>${live ? `${live} en cours` : `${pct} % joué`}</span></div><div class="tb"><i style="width:${pct}%"></i></div></button>`;
   });
   const busy = MODEL.courts.busy.filter(v => v === 1).length;
   tabs.push(`<button class="tab" role="tab" data-tab="T" aria-selected="${state.tab === "T"}" style="--c:var(--live);--cs:var(--live-soft)">
       <span class="letter">T</span><div class="tt">Terrains</div>
-      <div class="ts">${busy} occupés sur ${MODEL.courts.count}</div><div class="tb"><i style="width:${busy / MODEL.courts.count * 100}%"></i></div></button>`);
+      <div class="ts"><span>${busy} occupés</span><span class="sep"> </span><span>sur ${MODEL.courts.count}</span></div><div class="tb"><i style="width:${busy / MODEL.courts.count * 100}%"></i></div></button>`);
   $("#tabs").innerHTML = tabs.join("");
 }
 
