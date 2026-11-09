@@ -128,7 +128,7 @@ button.tm:hover{border-color:var(--accent)}
 .empty{color:var(--muted);padding:30px;text-align:center;border:1px dashed var(--line-2);border-radius:var(--r)}
 
 /* ---------- Arbre final ---------- */
-.bracket{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(220px,1fr);gap:16px;overflow-x:auto;padding-bottom:10px;scroll-snap-type:x mandatory}
+.bracket{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(272px,1fr);gap:16px;overflow-x:auto;padding-bottom:10px;scroll-snap-type:x mandatory}
 .b-col{display:flex;flex-direction:column;scroll-snap-align:start}
 .b-col h3{margin:0 0 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
 .b-list .match{grid-template-columns:38px minmax(0,1fr);row-gap:6px}
@@ -362,8 +362,12 @@ dialog::backdrop{background:rgba(16,24,40,.45)}
 .tl .l3 .players li{font-size:12px;position:static;padding:0}
 .tl .l3 .players li::before,.tl .l3 .players li::after{display:none}
 
-.tmw{display:contents}
-.tmw .pl1{display:none}
+.duel{align-items:flex-start}
+.duel .vs{margin-top:14px}
+.tmw{display:flex;flex-direction:column;align-items:center;gap:3px;width:78px;flex:0 0 78px}
+.tmw .tm{width:100%;min-width:0}
+.duel > .tm.ph{width:78px;min-width:0;flex:0 0 78px}
+.tmw .pl1{display:block;max-width:100%;font-size:10px;font-weight:700;line-height:1.15;letter-spacing:0;text-transform:uppercase;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden}
 @media (max-width:720px){
   /* vignettes de concours : plus étroites, infos sur 3 lignes */
   nav.tabs{grid-template-columns:repeat(4,minmax(136px,1fr));gap:8px}
@@ -374,13 +378,6 @@ dialog::backdrop{background:rgba(16,24,40,.45)}
   .tab .ts span{display:block}
   .tab .ts .sep{display:none}
   .tab .tb{margin-top:6px}
-  /* nom du premier joueur sous la bulle du numéro d'équipe : bulles toutes identiques, nom centré dessous */
-  .duel{align-items:flex-start}
-  .duel .vs{margin-top:14px}
-  .tmw{display:flex;flex-direction:column;align-items:center;gap:3px;width:78px;flex:0 0 78px}
-  .tmw .tm{width:100%;min-width:0}
-  .duel > .tm.ph{width:78px;min-width:0;flex:0 0 78px}
-  .tmw .pl1{display:block;max-width:100%;font-size:10px;font-weight:700;line-height:1.15;letter-spacing:.02em;text-transform:uppercase;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden}
 }
 
 /* ===== Boutons phase précédente / suivante (mobile) ===== */
@@ -597,7 +594,8 @@ function familyName(full) {
 }
 function shortName(n) {
   const p = TEAMS[n] && TEAMS[n][0]; if (!p) return "";
-  return familyName(p.name).slice(0, 10).replace(/[-' ]+$/, "");
+  const f = familyName(p.name);
+  return f.length <= 10 ? f : f.slice(0, 9).replace(/[-' ]+$/, "") + "...";   // nom trop long : coupé et suivi de « ... »
 }
 function teamRow(v, m) {
   if (isTeam(v)) {
