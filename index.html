@@ -382,6 +382,30 @@ dialog::backdrop{background:rgba(16,24,40,.45)}
   .duel > .tm.ph{width:78px;min-width:0;flex:0 0 78px}
   .tmw .pl1{display:block;max-width:100%;font-size:10px;font-weight:700;line-height:1.15;letter-spacing:.02em;text-transform:uppercase;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden}
 }
+
+/* ===== Sélecteur de phase (mobile) ===== */
+.stepsel{display:none}
+.ssd{width:12px;height:12px;border-radius:50%;flex:0 0 auto;border:2px solid var(--faint);background:transparent}
+.ssd.fini{background:var(--accent);border-color:var(--accent)}
+.ssd.encours{background:var(--live);border-color:var(--live);box-shadow:0 0 0 4px var(--live-soft)}
+dialog.sheet{margin:auto 0 0;width:100%;max-width:none;border-radius:18px 18px 0 0;max-height:80vh}
+.ss-list{display:grid;gap:8px}
+.ss-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);font:inherit;cursor:pointer}
+.ss-row.sel{border-color:var(--accent);background:var(--accent-soft)}
+.ss-rt{font-weight:800;font-size:15px;flex:1;min-width:0}
+.ss-rs{font-size:12px;color:var(--muted);font-weight:650;white-space:nowrap}
+@media (max-width:720px){
+  .rail .steps{display:none}
+  .stepsel{display:flex;align-items:stretch;gap:8px;margin-bottom:6px}
+  .ss-nav{flex:0 0 46px;border:1px solid var(--line-2);background:var(--panel);color:var(--accent);border-radius:12px;display:grid;place-items:center;cursor:pointer;padding:0}
+  .ss-nav svg{width:22px;height:22px}
+  .ss-nav:disabled{opacity:.35;cursor:default}
+  .ss-cur{flex:1;min-width:0;display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--ink);border-radius:12px;font:inherit;cursor:pointer}
+  .ss-txt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.2}
+  .ss-txt b{font-size:16px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ss-txt small{font-size:12px;color:var(--muted);font-weight:650;margin-top:2px}
+  .ss-cur > svg{width:20px;height:20px;flex:0 0 auto;color:var(--accent)}
+}
 </style>
 </head>
 <body>
@@ -427,6 +451,10 @@ dialog::backdrop{background:rgba(16,24,40,.45)}
   <div class="d-body" id="d-body"></div>
 </dialog>
 
+<dialog id="dlgSteps" class="sheet" aria-label="Choisir une phase">
+  <div class="d-head"><h3>Phases du concours</h3><button class="d-close" onclick="dlgSteps.close()" aria-label="Fermer">×</button></div>
+  <div class="d-body" id="steps-body"></div>
+</dialog>
 <dialog id="dlgPush">
   <div class="d-head"><h3>Alerte même téléphone verrouillé</h3><button class="d-close" onclick="dlgPush.close()" aria-label="Fermer">×</button></div>
   <div class="d-body" id="push-body"></div>
@@ -653,6 +681,41 @@ function bracketMobile(c, fin, champ) {
   return `<div class="bm">${banner}${fin.map(r => `<section class="bm-sec"><h3 class="bm-h">${esc(r.label)}</h3><div class="b-list">${r.matches.map(matchCard).join("")}</div></section>`).join("")}</div>`;
 }
 
+/* ---- Sélecteur de phase (mobile) : barre ‹ phase ▾ › + liste complète ---- */
+function stepItems(c) {
+  const stTxt = { fini: "Terminé", encours: "En cours", avenir: "À venir" };
+  const pre = c.rounds.filter(r => !r.final), fin = c.rounds.filter(r => r.final);
+  const items = pre.map(r => {
+    const real = r.matches.filter(m => m.status !== "exempt");
+    return { key: r.key, label: r.label, status: r.status, sub: `${real.filter(m => m.status === "fini").length}/${real.length} · ${stTxt[r.status]}` };
+  });
+  if (fin.length) {
+    const fs = fin.some(r => r.status === "encours") ? "encours" : fin.every(r => r.status === "fini") ? "fini" : "avenir";
+    items.push({ key: "final", label: "Phase finale", status: fs, sub: fin.map(r => r.label.replace(" de finale", "").replace(" finale", "")).join(" · ") });
+  }
+  return items;
+}
+const ARR_L = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>';
+const ARR_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+const ARR_D = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+function stepSelectorHtml(c, step) {
+  const items = stepItems(c), i = Math.max(0, items.findIndex(x => x.key === step)), cur = items[i];
+  if (!cur) return "";
+  const prev = items[i - 1], next = items[i + 1];
+  return `<div class="stepsel">
+    <button class="ss-nav" ${prev ? `data-step="${prev.key}"` : "disabled"} aria-label="Phase précédente">${ARR_L}</button>
+    <button class="ss-cur" data-step-open aria-haspopup="dialog"><span class="ssd ${cur.status}"></span><span class="ss-txt"><b>${esc(cur.label)}</b><small>${esc(cur.sub)}</small></span>${ARR_D}</button>
+    <button class="ss-nav" ${next ? `data-step="${next.key}"` : "disabled"} aria-label="Phase suivante">${ARR_R}</button></div>`;
+}
+function openStepSheet() {
+  const c = MODEL.concours[state.tab]; if (!c) return;
+  const step = state.step[c.id];
+  $("#steps-body").innerHTML = `<div class="ss-list" style="--accent:var(--${c.color});--accent-soft:var(--${c.color}-soft)">${stepItems(c).map(x =>
+    `<button class="ss-row${x.key === step ? " sel" : ""}" data-step="${x.key}"><span class="ssd ${x.status}"></span><span class="ss-rt">${esc(x.label)}</span><span class="ss-rs">${esc(x.sub)}</span></button>`).join("")}</div>`;
+  if (!$("#dlgSteps").open) $("#dlgSteps").showModal();
+  const sel = $("#steps-body .sel"); if (sel) sel.scrollIntoView({ block: "center" });
+}
+
 function renderConcours(c) {
   document.documentElement.style.setProperty("--accent", `var(--${c.color})`);
   document.documentElement.style.setProperty("--accent-soft", `var(--${c.color}-soft)`);
@@ -696,6 +759,7 @@ function renderConcours(c) {
 
   $("#view").innerHTML = `<div class="layout">
     <aside class="rail"><div class="one"><h2>${c.label}</h2><p>${c.id === "A" ? "Concours principal" : c.id === "B" ? "Perdants du 1er tour A et récupération du 2e tour A" : "Perdants du 1er tour B"}</p></div>
+      ${stepSelectorHtml(c, step)}
       <div class="steps">${chips.join("")}</div></aside>
     <section>${content}</section></div>`;
 }
@@ -1267,7 +1331,8 @@ document.addEventListener("click", e => {
   const et = e.target.closest("[data-em-test]"); if (et) { emTest(Number(et.dataset.emTest)); return; }
   const ac = e.target.closest("#alert [data-court]"); if (ac) { const c = Number(ac.dataset.court); stopAlert(); showCourt(c); return; }
   const t = e.target.closest("[data-tab]"); if (t) { state.tab = t.dataset.tab; state.filter = "all"; render(); saveView(); return; }
-  const s = e.target.closest("[data-step]"); if (s) { state.step[state.tab] = s.dataset.step; state.filter = "all"; render(); saveView(); return; }
+  if (e.target.closest("[data-step-open]")) { openStepSheet(); return; }
+  const s = e.target.closest("[data-step]"); if (s) { if ($("#dlgSteps").open) $("#dlgSteps").close(); state.step[state.tab] = s.dataset.step; state.filter = "all"; render(); saveView(); return; }
   const f = e.target.closest("[data-filter]"); if (f) { state.filter = f.dataset.filter; render(); saveView(); return; }
   const tm = e.target.closest("[data-team]"); if (tm) { showTeam(Number(tm.dataset.team)); return; }
   const ct = e.target.closest("[data-court]"); if (ct) showCourt(Number(ct.dataset.court));
@@ -1277,6 +1342,7 @@ $("#qgo").addEventListener("click", e => { e.preventDefault(); const v = Number(
 $("#dlg").addEventListener("click", e => { if (e.target.id === "dlg") e.target.close(); });
 $("#dlgTeams").addEventListener("click", e => { if (e.target.id === "dlgTeams") e.target.close(); });
 $("#dlgPush").addEventListener("click", e => { if (e.target.id === "dlgPush") e.target.close(); });
+$("#dlgSteps").addEventListener("click", e => { if (e.target.id === "dlgSteps") e.target.close(); });
 $("#btnTeams").addEventListener("click", openTeamList);
 $("#tq").addEventListener("input", renderTeamList);
 
