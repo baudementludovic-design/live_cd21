@@ -358,6 +358,10 @@ dialog::backdrop{background:rgba(16,24,40,.45)}
 }
 @media (max-width:560px){ .rail .one h2{font-size:12px;letter-spacing:.06em} }
 .tl .l3{margin-top:6px}
+.tl .l3[hidden]{display:none}
+.tl .opp-t{display:inline-flex;align-items:center;gap:2px;margin-left:8px;padding:0;border:0;background:none;color:var(--accent);font:inherit;font-size:12px;font-weight:750;cursor:pointer;vertical-align:baseline}
+.tl .opp-t svg{width:14px;height:14px;transition:transform .2s}
+.tl .opp-t[aria-expanded=true] svg{transform:rotate(180deg)}
 .tl .l3 .players{gap:4px}
 .tl .l3 .players li{font-size:12px;position:static;padding:0}
 .tl .l3 .players li::before,.tl .l3 .players li::after{display:none}
@@ -864,6 +868,7 @@ function showCourt(t) {
 }
 
 /* ============ PARCOURS D'UNE ÉQUIPE ============ */
+const OPP_OPEN = new Set();
 function showTeam(n) {
   if (!isTeam(n) || n > MODEL.teams) return;
   const items = allMatches().filter(m => m.a === n || m.b === n);
@@ -878,13 +883,19 @@ function showTeam(n) {
       default: return `En attente contre ${oppTxt}`;
     }
   };
-  const oppCompo = m => { const opp = m.a === n ? m.b : m.a; return isTeam(opp) && TEAMS[opp] ? `<div class="l3">${playersHtml(opp)}</div>` : ""; };
+  // Composition de l'équipe adverse : repliée par défaut, dépliée avec « voir + »
+  const oppKey = m => `${n}|${m.concours}|${m.roundKey}|${m.n}`;
+  const oppHas = m => { const opp = m.a === n ? m.b : m.a; return isTeam(opp) && TEAMS[opp]; };
+  const oppToggle = m => { if (!oppHas(m)) return ""; const o = OPP_OPEN.has(oppKey(m));
+    return `<button class="opp-t" data-opp-toggle="${oppKey(m)}" aria-expanded="${o}"><span class="opp-l">${o ? "réduire" : "voir +"}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>`; };
+  const oppCompo = m => { if (!oppHas(m)) return ""; const opp = m.a === n ? m.b : m.a;
+    return `<div class="l3"${OPP_OPEN.has(oppKey(m)) ? "" : " hidden"}>${playersHtml(opp)}</div>`; };
   const last = items[items.length - 1];
   if ($("#dlgTeams").open) $("#dlgTeams").close();
   $("#d-title").textContent = teamName(n);
   $("#d-body").innerHTML = `<div style="margin-bottom:12px">${pinBtn(n)}</div>` + (last ? `<div class="now"><b>Situation actuelle</b>${CONCOURS[last.concours].label} · ${last.round} — ${line(last)}</div>` : "") +
     (TEAMS[n] ? `<div class="compo"><h4>Composition</h4>${playersHtml(n)}</div><h4 class="tl-h">Parcours</h4>` : "") +
-    `<ul class="tl">${items.map(m => `<li style="--cc:var(--${CONCOURS[m.concours].color})"><div class="l1">${CONCOURS[m.concours].label} · ${m.round} · partie ${m.n}</div><div class="l2">${line(m)}</div>${oppCompo(m)}</li>`).join("")}</ul>`;
+    `<ul class="tl">${items.map(m => `<li style="--cc:var(--${CONCOURS[m.concours].color})"><div class="l1">${CONCOURS[m.concours].label} · ${m.round} · partie ${m.n}</div><div class="l2">${line(m)}${oppToggle(m)}</div>${oppCompo(m)}</li>`).join("")}</ul>`;
   if (!$("#dlg").open) $("#dlg").showModal();
 }
 
@@ -1294,6 +1305,12 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-alert-perm]")) { askNotifPermission(); return; }
   if (e.target.closest("[data-alert-ok]")) { stopAlert(); return; }
   if (e.target.closest("[data-push-open]")) { openPush(); return; }
+  const ot = e.target.closest("[data-opp-toggle]");
+  if (ot) {
+    const k = ot.dataset.oppToggle, box = ot.closest("li").querySelector(".l3"), open = box.hidden;
+    box.hidden = !open; ot.setAttribute("aria-expanded", open); ot.querySelector(".opp-l").textContent = open ? "réduire" : "voir +";
+    open ? OPP_OPEN.add(k) : OPP_OPEN.delete(k); return;
+  }
   const cp = e.target.closest("[data-copy]"); if (cp) { copyText(cp.dataset.copy, cp); return; }
   if (e.target.closest("[data-push-test]")) { pushTest(); return; }
   const et = e.target.closest("[data-em-test]"); if (et) { emTest(Number(et.dataset.emTest)); return; }
@@ -1308,6 +1325,7 @@ $("#q").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDef
 $("#qgo").addEventListener("click", e => { e.preventDefault(); const v = Number($("#q").value); $("#q").blur(); setTimeout(() => showTeam(v), 0); });
 $("#dlg").addEventListener("click", e => { if (e.target.id === "dlg") e.target.close(); });
 $("#dlgTeams").addEventListener("click", e => { if (e.target.id === "dlgTeams") e.target.close(); });
+$("#dlg").addEventListener("close", () => OPP_OPEN.clear());
 $("#dlgPush").addEventListener("click", e => { if (e.target.id === "dlgPush") e.target.close(); });
 $("#btnTeams").addEventListener("click", openTeamList);
 $("#tq").addEventListener("input", renderTeamList);
