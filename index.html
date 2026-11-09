@@ -392,6 +392,7 @@ dialog::backdrop{background:rgba(16,24,40,.45)}
   .ss-nav{display:grid;place-items:center;flex:0 0 32px;width:32px;height:32px;padding:0;border:1px solid var(--line-2);background:var(--panel);color:var(--accent);border-radius:9px;cursor:pointer}
   .ss-nav svg{width:17px;height:17px}
   .ss-nav:disabled{opacity:.3;cursor:default}
+  .ss-nav.edge{opacity:.3}
 }
 </style>
 </head>
@@ -679,6 +680,16 @@ function bracketMobile(c, fin, champ) {
 /* ---- Boutons phase précédente / suivante (mobile), à côté de la rangée de phases qui défile ---- */
 const ARR_L = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>';
 const ARR_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+// Flèches grisées aussi quand la rangée des phases a été glissée jusqu'au bout (elles restent cliquables tant qu'une phase suivante existe)
+function syncStepEdges() {
+  const st = document.querySelector(".steps"), nav = document.querySelectorAll(".stepnav .ss-nav");
+  if (!st || nav.length < 2) return;
+  const over = st.scrollWidth > st.clientWidth + 2;
+  nav[0].classList.toggle("edge", over && st.scrollLeft <= 2);
+  nav[1].classList.toggle("edge", over && st.scrollLeft + st.clientWidth >= st.scrollWidth - 2);
+}
+document.addEventListener("scroll", e => { if (e.target && e.target.classList && e.target.classList.contains("steps")) syncStepEdges(); }, true);
+window.addEventListener("resize", syncStepEdges);
 function stepNavBtn(keys, step, dir) {
   const i = keys.indexOf(step), k = keys[i + dir];
   return `<button class="ss-nav" ${k && i >= 0 ? `data-step="${k}"` : "disabled"} aria-label="${dir < 0 ? "Phase précédente" : "Phase suivante"}">${dir < 0 ? ARR_L : ARR_R}</button>`;
@@ -799,6 +810,7 @@ function render() {
     const sel = steps.querySelector("[aria-selected=true]");
     if (sel) { const b = steps.getBoundingClientRect(), r = sel.getBoundingClientRect(); if (r.left < b.left || r.right > b.right) centerIn(steps, sel); }
   }
+  syncStepEdges();
   lastRenderTab = state.tab;
   if (VIEW_PENDING) {
     const y = VIEW_PENDING.y; VIEW_PENDING = null;
